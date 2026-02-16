@@ -1,16 +1,20 @@
-    import streamlit as st
+import streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
 from reportlab.pdfgen import canvas
 import shutil
 
-st.set_page_config(page_title="TOKO MARBOEEN KIDS", layout="wide")
+st.set_page_config(
+    page_title="TOKO MARBOEEN KIDS",
+    page_icon="🛒",
+    layout="wide"
+)
 
 DATA_BARANG = "data_barang.csv"
 DATA_TRANSAKSI = "transaksi.csv"
 
-# ================= BACKUP OTOMATIS =================
+# ================= BACKUP =================
 
 if not os.path.exists("backup"):
     os.mkdir("backup")
@@ -24,10 +28,14 @@ if os.path.exists(DATA_TRANSAKSI):
 # ================= BUAT FILE =================
 
 if not os.path.exists(DATA_BARANG):
-    pd.DataFrame(columns=["kode","nama","modal","jual","stok"]).to_csv(DATA_BARANG,index=False)
+    pd.DataFrame(columns=[
+        "kode","nama","modal","jual","stok","expired"
+    ]).to_csv(DATA_BARANG,index=False)
 
 if not os.path.exists(DATA_TRANSAKSI):
-    pd.DataFrame(columns=["tanggal","kode","nama","jumlah","total","profit"]).to_csv(DATA_TRANSAKSI,index=False)
+    pd.DataFrame(columns=[
+        "tanggal","kode","nama","jumlah","total","profit"
+    ]).to_csv(DATA_TRANSAKSI,index=False)
 
 # ================= LOGIN =================
 
@@ -36,7 +44,8 @@ if "login" not in st.session_state:
 
 if not st.session_state.login:
 
-    st.title("🔐 LOGIN ADMIN TOKO MARBOEEN KIDS")
+    st.title("🔐 LOGIN ADMIN")
+    st.subheader("TOKO MARBOEEN KIDS")
 
     user=st.text_input("Username")
     pw=st.text_input("Password", type="password")
@@ -53,7 +62,7 @@ if not st.session_state.login:
 
     st.stop()
 
-# ================= LOAD DATA =================
+# ================= LOAD =================
 
 barang=pd.read_csv(DATA_BARANG)
 transaksi=pd.read_csv(DATA_TRANSAKSI)
@@ -62,10 +71,11 @@ transaksi=pd.read_csv(DATA_TRANSAKSI)
 
 st.title("🛒 TOKO MARBOEEN KIDS")
 
-menu=st.sidebar.selectbox("Menu",[
+menu=st.sidebar.selectbox("MENU",[
     "Dashboard",
     "Tambah Barang",
     "Kasir",
+    "Barang Expired",
     "Grafik Profit",
     "Export Excel"
 ])
@@ -74,20 +84,39 @@ menu=st.sidebar.selectbox("Menu",[
 
 if menu=="Dashboard":
 
-    st.subheader("Stok Barang")
-    st.dataframe(barang)
+    st.subheader("📊 Dashboard")
 
-    st.metric("Total Profit", transaksi["profit"].sum())
+    total_barang=len(barang)
 
-# ================= TAMBAH BARANG =================
+    total_stok=0
+    if not barang.empty:
+        total_stok=barang["stok"].sum()
+
+    total_profit=0
+    if not transaksi.empty:
+        total_profit=transaksi["profit"].sum()
+
+    col1,col2,col3=st.columns(3)
+
+    col1.metric("Jumlah Barang",total_barang)
+    col2.metric("Total Stok",total_stok)
+    col3.metric("Total Profit",total_profit)
+
+    st.subheader("Data Barang")
+    st.dataframe(barang,use_container_width=True)
+
+# ================= TAMBAH =================
 
 elif menu=="Tambah Barang":
 
-    kode=st.text_input("Kode Barcode / Kode Barang")
+    st.subheader("Tambah Barang")
+
+    kode=st.text_input("Kode Barang")
     nama=st.text_input("Nama Barang")
-    modal=st.number_input("Harga Modal")
-    jual=st.number_input("Harga Jual")
-    stok=st.number_input("Stok")
+    modal=st.number_input("Harga Modal",0)
+    jual=st.number_input("Harga Jual",0)
+    stok=st.number_input("Stok",0)
+    expired=st.date_input("Tanggal Expired")
 
     if st.button("Simpan"):
 
@@ -96,19 +125,22 @@ elif menu=="Tambah Barang":
             "nama":nama,
             "modal":modal,
             "jual":jual,
-            "stok":stok
+            "stok":stok,
+            "expired":expired
         }])
 
-        barang=pd.concat([barang,new])
+        barang=pd.concat([barang,new],ignore_index=True)
         barang.to_csv(DATA_BARANG,index=False)
 
-        st.success("Barang berhasil ditambahkan")
+        st.success("Barang disimpan")
 
 # ================= KASIR =================
 
 elif menu=="Kasir":
 
-    kode=st.text_input("Scan / Input Kode Barang")
+    st.subheader("🧾 Kasir")
+
+    kode=st.text_input("Scan / Input Kode")
 
     hasil=barang[barang["kode"]==kode]
 
@@ -117,78 +149,101 @@ elif menu=="Kasir":
         nama=hasil.iloc[0]["nama"]
         jual=hasil.iloc[0]["jual"]
         modal=hasil.iloc[0]["modal"]
+        stok=hasil.iloc[0]["stok"]
 
-        st.write("Nama:",nama)
-        st.write("Harga:",jual)
+        st.info(f"Barang: {nama}")
+        st.info(f"Harga: {jual}")
+        st.info(f"Stok: {stok}")
 
         jumlah=st.number_input("Jumlah",1)
 
         if st.button("Bayar"):
 
-            total=jual*jumlah
-            profit=(jual-modal)*jumlah
+            if jumlah>stok:
+                st.error("Stok tidak cukup")
 
-            idx=barang.index[barang.kode==kode][0]
+            else:
 
-            barang.loc[idx,"stok"]-=jumlah
-            barang.to_csv(DATA_BARANG,index=False)
+                total=jual*jumlah
+                profit=(jual-modal)*jumlah
 
-            new=pd.DataFrame([{
-                "tanggal":datetime.now(),
-                "kode":kode,
-                "nama":nama,
-                "jumlah":jumlah,
-                "total":total,
-                "profit":profit
-            }])
+                idx=barang.index[barang.kode==kode][0]
 
-            transaksi=pd.concat([transaksi,new])
-            transaksi.to_csv(DATA_TRANSAKSI,index=False)
+                barang.loc[idx,"stok"]-=jumlah
+                barang.to_csv(DATA_BARANG,index=False)
 
-            st.success("Pembayaran berhasil")
+                new=pd.DataFrame([{
+                    "tanggal":datetime.now(),
+                    "kode":kode,
+                    "nama":nama,
+                    "jumlah":jumlah,
+                    "total":total,
+                    "profit":profit
+                }])
 
-            # ================= STRUK PDF =================
+                transaksi=pd.concat([transaksi,new],ignore_index=True)
+                transaksi.to_csv(DATA_TRANSAKSI,index=False)
 
-            if not os.path.exists("struk"):
-                os.mkdir("struk")
+                st.success("Transaksi berhasil")
 
-            file="struk/struk.pdf"
+                # STRUK PDF
 
-            c=canvas.Canvas(file)
+                if not os.path.exists("struk"):
+                    os.mkdir("struk")
 
-            c.drawString(100,750,"TOKO MARBOEEN KIDS")
-            c.drawString(100,720,f"Tanggal: {datetime.now()}")
-            c.drawString(100,690,f"Barang: {nama}")
-            c.drawString(100,660,f"Jumlah: {jumlah}")
-            c.drawString(100,630,f"Total: {total}")
+                file=f"struk/struk_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
 
-            c.save()
+                c=canvas.Canvas(file)
 
-            with open(file,"rb") as f:
+                c.drawString(100,750,"TOKO MARBOEEN KIDS")
+                c.drawString(100,720,str(datetime.now()))
+                c.drawString(100,690,nama)
+                c.drawString(100,660,f"Jumlah: {jumlah}")
+                c.drawString(100,630,f"Total: {total}")
 
-                st.download_button(
-                    "Download Struk PDF",
-                    f,
-                    file_name="struk.pdf"
-                )
+                c.save()
+
+                with open(file,"rb") as f:
+
+                    st.download_button(
+                        "Download Struk",
+                        f,
+                        file_name="struk.pdf"
+                    )
+
+# ================= EXPIRED =================
+
+elif menu=="Barang Expired":
+
+    if not barang.empty:
+
+        barang["expired"]=pd.to_datetime(barang["expired"])
+
+        expired=barang[
+            barang["expired"]<datetime.now()
+        ]
+
+        st.dataframe(expired)
 
 # ================= GRAFIK =================
 
 elif menu=="Grafik Profit":
 
-    transaksi["tanggal"]=pd.to_datetime(transaksi["tanggal"])
+    if not transaksi.empty:
 
-    transaksi["bulan"]=transaksi["tanggal"].dt.month
+        transaksi["tanggal"]=pd.to_datetime(transaksi["tanggal"])
 
-    data=transaksi.groupby("bulan")["profit"].sum()
+        transaksi["bulan"]=transaksi["tanggal"].dt.strftime("%Y-%m")
 
-    st.bar_chart(data)
+        data=transaksi.groupby("bulan")["profit"].sum()
+
+        st.bar_chart(data)
 
 # ================= EXPORT =================
 
 elif menu=="Export Excel":
 
-    file="transaksi.xlsx"
+    file="laporan.xlsx"
 
     transaksi.to_excel(file,index=False)
 
