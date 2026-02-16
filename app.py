@@ -162,8 +162,7 @@ elif st.session_state.page == "Kasir":
                     "total": total,
                     "profit": profit
                 }])
-
-                global transaksi
+                
                 transaksi = pd.concat([transaksi,new],ignore_index=True)
                 transaksi.to_csv(DATA_TRANSAKSI,index=False)
 
