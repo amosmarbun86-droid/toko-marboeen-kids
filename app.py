@@ -4,17 +4,67 @@ from datetime import datetime
 import os
 from reportlab.pdfgen import canvas
 import shutil
+import base64
+
+# ================= CONFIG =================
 
 st.set_page_config(
     page_title="TOKO MARBOEEN KIDS",
     page_icon="🛒",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
-DATA_BARANG = "data_barang.csv"
-DATA_TRANSAKSI = "transaksi.csv"
+# ================= BACKGROUND =================
 
-# ================= BACKUP =================
+def set_bg():
+    if os.path.exists("bg.png"):
+        with open("bg.png","rb") as img:
+            encoded = base64.b64encode(img.read()).decode()
+
+        st.markdown(f"""
+        <style>
+
+        .stApp {{
+            background-image: url("data:image/png;base64,{encoded}");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }}
+
+        header {{visibility:hidden;}}
+        footer {{visibility:hidden;}}
+
+        .block-container {{
+            padding: 15px;
+        }}
+
+        .card {{
+            background-color: rgba(255,255,255,0.95);
+            padding:15px;
+            border-radius:15px;
+            box-shadow:0px 4px 10px rgba(0,0,0,0.2);
+        }}
+
+        .title {{
+            background: linear-gradient(90deg,#ff0000,#ff9900);
+            padding:15px;
+            border-radius:10px;
+            color:white;
+            text-align:center;
+            font-size:28px;
+            font-weight:bold;
+        }}
+
+        </style>
+        """, unsafe_allow_html=True)
+
+set_bg()
+
+# ================= FILE =================
+
+DATA_BARANG="data_barang.csv"
+DATA_TRANSAKSI="transaksi.csv"
 
 if not os.path.exists("backup"):
     os.mkdir("backup")
@@ -25,17 +75,11 @@ if os.path.exists(DATA_BARANG):
 if os.path.exists(DATA_TRANSAKSI):
     shutil.copy(DATA_TRANSAKSI,"backup/transaksi_backup.csv")
 
-# ================= BUAT FILE =================
-
 if not os.path.exists(DATA_BARANG):
-    pd.DataFrame(columns=[
-        "kode","nama","modal","jual","stok","expired"
-    ]).to_csv(DATA_BARANG,index=False)
+    pd.DataFrame(columns=["kode","nama","modal","jual","stok","expired"]).to_csv(DATA_BARANG,index=False)
 
 if not os.path.exists(DATA_TRANSAKSI):
-    pd.DataFrame(columns=[
-        "tanggal","kode","nama","jumlah","total","profit"
-    ]).to_csv(DATA_TRANSAKSI,index=False)
+    pd.DataFrame(columns=["tanggal","kode","nama","jumlah","total","profit"]).to_csv(DATA_TRANSAKSI,index=False)
 
 # ================= LOGIN =================
 
@@ -44,19 +88,15 @@ if "login" not in st.session_state:
 
 if not st.session_state.login:
 
-    st.title("🔐 LOGIN ADMIN")
-    st.subheader("TOKO MARBOEEN KIDS")
+    st.markdown('<div class="title">🔐 LOGIN ADMIN</div>', unsafe_allow_html=True)
 
     user=st.text_input("Username")
-    pw=st.text_input("Password", type="password")
+    pw=st.text_input("Password",type="password")
 
     if st.button("Login"):
-
         if user=="admin" and pw=="1234":
-
             st.session_state.login=True
             st.rerun()
-
         else:
             st.error("Login salah")
 
@@ -67,9 +107,9 @@ if not st.session_state.login:
 barang=pd.read_csv(DATA_BARANG)
 transaksi=pd.read_csv(DATA_TRANSAKSI)
 
-# ================= MENU =================
+# ================= HEADER =================
 
-st.title("🛒 TOKO MARBOEEN KIDS")
+st.markdown('<div class="title">🛒 TOKO MARBOEEN KIDS</div>', unsafe_allow_html=True)
 
 menu=st.sidebar.selectbox("MENU",[
     "Dashboard",
@@ -84,61 +124,50 @@ menu=st.sidebar.selectbox("MENU",[
 
 if menu=="Dashboard":
 
-    st.subheader("📊 Dashboard")
+    st.markdown('<div class="card">', unsafe_allow_html=True)
 
     total_barang=len(barang)
-
-    total_stok=0
-    if not barang.empty:
-        total_stok=barang["stok"].sum()
-
-    total_profit=0
-    if not transaksi.empty:
-        total_profit=transaksi["profit"].sum()
+    total_stok=barang["stok"].sum() if not barang.empty else 0
+    total_profit=transaksi["profit"].sum() if not transaksi.empty else 0
 
     col1,col2,col3=st.columns(3)
-
     col1.metric("Jumlah Barang",total_barang)
     col2.metric("Total Stok",total_stok)
     col3.metric("Total Profit",total_profit)
 
-    st.subheader("Data Barang")
     st.dataframe(barang,use_container_width=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ================= TAMBAH =================
 
 elif menu=="Tambah Barang":
 
-    st.subheader("Tambah Barang")
+    st.markdown('<div class="card">', unsafe_allow_html=True)
 
-    kode=st.text_input("Kode Barang")
-    nama=st.text_input("Nama Barang")
-    modal=st.number_input("Harga Modal",0)
-    jual=st.number_input("Harga Jual",0)
+    kode=st.text_input("Kode")
+    nama=st.text_input("Nama")
+    modal=st.number_input("Modal",0)
+    jual=st.number_input("Jual",0)
     stok=st.number_input("Stok",0)
-    expired=st.date_input("Tanggal Expired")
+    expired=st.date_input("Expired")
 
     if st.button("Simpan"):
-
         new=pd.DataFrame([{
-            "kode":kode,
-            "nama":nama,
-            "modal":modal,
-            "jual":jual,
-            "stok":stok,
-            "expired":expired
+            "kode":kode,"nama":nama,"modal":modal,
+            "jual":jual,"stok":stok,"expired":expired
         }])
-
         barang=pd.concat([barang,new],ignore_index=True)
         barang.to_csv(DATA_BARANG,index=False)
+        st.success("Berhasil")
 
-        st.success("Barang disimpan")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ================= KASIR =================
 
 elif menu=="Kasir":
 
-    st.subheader("🧾 Kasir")
+    st.markdown('<div class="card">', unsafe_allow_html=True)
 
     kode=st.text_input("Scan / Input Kode")
 
@@ -151,9 +180,7 @@ elif menu=="Kasir":
         modal=hasil.iloc[0]["modal"]
         stok=hasil.iloc[0]["stok"]
 
-        st.info(f"Barang: {nama}")
-        st.info(f"Harga: {jual}")
-        st.info(f"Stok: {stok}")
+        st.info(f"{nama} | Harga: {jual} | Stok: {stok}")
 
         jumlah=st.number_input("Jumlah",1)
 
@@ -161,14 +188,11 @@ elif menu=="Kasir":
 
             if jumlah>stok:
                 st.error("Stok tidak cukup")
-
             else:
-
                 total=jual*jumlah
                 profit=(jual-modal)*jumlah
 
                 idx=barang.index[barang.kode==kode][0]
-
                 barang.loc[idx,"stok"]-=jumlah
                 barang.to_csv(DATA_BARANG,index=False)
 
@@ -186,43 +210,15 @@ elif menu=="Kasir":
 
                 st.success("Transaksi berhasil")
 
-                # STRUK PDF
-
-                if not os.path.exists("struk"):
-                    os.mkdir("struk")
-
-                file=f"struk/struk_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
-
-                c=canvas.Canvas(file)
-
-                c.drawString(100,750,"TOKO MARBOEEN KIDS")
-                c.drawString(100,720,str(datetime.now()))
-                c.drawString(100,690,nama)
-                c.drawString(100,660,f"Jumlah: {jumlah}")
-                c.drawString(100,630,f"Total: {total}")
-
-                c.save()
-
-                with open(file,"rb") as f:
-
-                    st.download_button(
-                        "Download Struk",
-                        f,
-                        file_name="struk.pdf"
-                    )
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ================= EXPIRED =================
 
 elif menu=="Barang Expired":
 
     if not barang.empty:
-
         barang["expired"]=pd.to_datetime(barang["expired"])
-
-        expired=barang[
-            barang["expired"]<datetime.now()
-        ]
-
+        expired=barang[barang["expired"]<datetime.now()]
         st.dataframe(expired)
 
 # ================= GRAFIK =================
@@ -230,13 +226,9 @@ elif menu=="Barang Expired":
 elif menu=="Grafik Profit":
 
     if not transaksi.empty:
-
         transaksi["tanggal"]=pd.to_datetime(transaksi["tanggal"])
-
         transaksi["bulan"]=transaksi["tanggal"].dt.strftime("%Y-%m")
-
         data=transaksi.groupby("bulan")["profit"].sum()
-
         st.bar_chart(data)
 
 # ================= EXPORT =================
@@ -244,13 +236,7 @@ elif menu=="Grafik Profit":
 elif menu=="Export Excel":
 
     file="laporan.xlsx"
-
     transaksi.to_excel(file,index=False)
 
     with open(file,"rb") as f:
-
-        st.download_button(
-            "Download Excel",
-            f,
-            file_name=file
-        )
+        st.download_button("Download Excel",f,file_name=file)
