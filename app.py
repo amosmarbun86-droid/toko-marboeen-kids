@@ -3,10 +3,8 @@ import pandas as pd
 from datetime import datetime
 import os
 import base64
+import fitur_toko
 
-# =====================
-# KONFIGURASI
-# =====================
 
 st.set_page_config(
     page_title="Toko Marboeen Kids",
@@ -20,7 +18,7 @@ BACKGROUND = "background.png"
 
 
 # =====================
-# BACKGROUND FULL HP
+# BACKGROUND
 # =====================
 
 def set_bg():
@@ -32,20 +30,6 @@ def set_bg():
         .stApp {{
             background-image: url("data:image/png;base64,{data}");
             background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-        }}
-
-        .block-container {{
-            background: rgba(255,255,255,0.92);
-            padding: 20px;
-            border-radius: 10px;
-        }}
-
-        button {{
-            height: 60px;
-            font-size: 18px !important;
-            font-weight: bold !important;
         }}
         </style>
         """, unsafe_allow_html=True)
@@ -60,30 +44,21 @@ set_bg()
 def load_barang():
     if os.path.exists(DATA_BARANG):
         return pd.read_csv(DATA_BARANG)
-    else:
-        df = pd.DataFrame(columns=[
-            "kode","nama","modal","jual","stok","expired"
-        ])
-        df.to_csv(DATA_BARANG, index=False)
-        return df
+    df = pd.DataFrame(columns=["kode","nama","modal","jual","stok","expired"])
+    df.to_csv(DATA_BARANG, index=False)
+    return df
 
 def load_transaksi():
     if os.path.exists(DATA_TRANSAKSI):
         return pd.read_csv(DATA_TRANSAKSI)
-    else:
-        df = pd.DataFrame(columns=[
-            "tanggal","kode","nama","jumlah","total","profit"
-        ])
-        df.to_csv(DATA_TRANSAKSI, index=False)
-        return df
+    df = pd.DataFrame(columns=["tanggal","kode","nama","jumlah","total","profit"])
+    df.to_csv(DATA_TRANSAKSI, index=False)
+    return df
+
 
 barang = load_barang()
 transaksi = load_transaksi()
 
-
-# =====================
-# NAVIGASI
-# =====================
 
 if "page" not in st.session_state:
     st.session_state.page = "Menu"
@@ -94,7 +69,7 @@ def go(page):
 
 
 # =====================
-# MENU UTAMA
+# MENU
 # =====================
 
 if st.session_state.page == "Menu":
@@ -117,105 +92,52 @@ if st.session_state.page == "Menu":
         if st.button("📜 TRANSAKSI", use_container_width=True):
             go("Riwayat")
 
+        if st.button("⚙️ FITUR TAMBAHAN", use_container_width=True):
+            go("Fitur")
+
 
 # =====================
-# KASIR (VERSI FINAL KERANJANG)
+# KASIR
 # =====================
 
 elif st.session_state.page == "Kasir":
 
     st.title("🧾 KASIR")
 
-    if "cart" not in st.session_state:
-        st.session_state.cart = []
-
     if barang.empty:
         st.warning("Belum ada barang")
 
     else:
-
         pilih = st.selectbox("Pilih Barang", barang["nama"])
-
         data = barang[barang["nama"] == pilih].iloc[0]
 
-        st.info(f"Harga: {data['jual']} | Stok: {data['stok']}")
+        jumlah = st.number_input("Jumlah",1,int(data["stok"]),1)
 
-        jumlah = st.number_input(
-            "Jumlah",
-            min_value=1,
-            max_value=int(data["stok"]) if data["stok"] > 0 else 1,
-            value=1
-        )
+        if st.button("BAYAR"):
 
-        if st.button("Tambah ke Keranjang", use_container_width=True):
+            idx = barang.index[barang.kode == data["kode"]][0]
+            barang.loc[idx, "stok"] -= jumlah
 
-            st.session_state.cart.append({
+            new = pd.DataFrame([{
+                "tanggal": datetime.now(),
                 "kode": data["kode"],
-                "nama": pilih,
-                "modal": data["modal"],
-                "jual": data["jual"],
-                "jumlah": jumlah
-            })
+                "nama": data["nama"],
+                "jumlah": jumlah,
+                "total": data["jual"] * jumlah,
+                "profit": (data["jual"] - data["modal"]) * jumlah
+            }])
 
-            st.success("Ditambahkan ke keranjang")
-
-    st.divider()
-    st.subheader("🛒 Keranjang")
-
-    total = 0
-    total_profit = 0
-
-    if st.session_state.cart:
-
-        for i, item in enumerate(st.session_state.cart):
-
-            subtotal = item["jual"] * item["jumlah"]
-            profit = (item["jual"] - item["modal"]) * item["jumlah"]
-
-            total += subtotal
-            total_profit += profit
-
-            col1, col2 = st.columns([4,1])
-
-            col1.write(f"{item['nama']} x {item['jumlah']} = Rp {subtotal}")
-            if col2.button("❌", key=i):
-                st.session_state.cart.pop(i)
-                st.rerun()
-
-        st.write("---")
-        st.markdown(f"### TOTAL : Rp {total}")
-
-        if st.button("BAYAR SEKARANG", use_container_width=True):
-
-            for item in st.session_state.cart:
-
-                idx = barang.index[barang.kode == item["kode"]][0]
-                barang.loc[idx, "stok"] -= item["jumlah"]
-
-                new = pd.DataFrame([{
-                    "tanggal": datetime.now(),
-                    "kode": item["kode"],
-                    "nama": item["nama"],
-                    "jumlah": item["jumlah"],
-                    "total": item["jual"] * item["jumlah"],
-                    "profit": (item["jual"] - item["modal"]) * item["jumlah"]
-                }])
-
-                transaksi = pd.concat([transaksi, new], ignore_index=True)
+            transaksi = pd.concat([transaksi, new], ignore_index=True)
 
             barang.to_csv(DATA_BARANG, index=False)
             transaksi.to_csv(DATA_TRANSAKSI, index=False)
 
-            st.session_state.cart = []
+            st.success("Transaksi berhasil")
 
-            st.success("Transaksi berhasil ✅")
-            st.rerun()
-
-    else:
-        st.info("Keranjang kosong")
 
     if st.button("⬅ Kembali"):
         go("Menu")
+
 
 # =====================
 # DATA BARANG
@@ -227,16 +149,14 @@ elif st.session_state.page == "Barang":
 
     st.dataframe(barang, use_container_width=True)
 
-    st.subheader("Tambah Barang")
-
     kode = st.text_input("Kode")
     nama = st.text_input("Nama")
-    modal = st.number_input("Harga Modal",0)
-    jual = st.number_input("Harga Jual",0)
+    modal = st.number_input("Modal",0)
+    jual = st.number_input("Jual",0)
     stok = st.number_input("Stok",0)
     expired = st.date_input("Expired")
 
-    if st.button("SIMPAN", use_container_width=True):
+    if st.button("SIMPAN"):
 
         new = pd.DataFrame([{
             "kode":kode,
@@ -251,7 +171,7 @@ elif st.session_state.page == "Barang":
         barang2.to_csv(DATA_BARANG,index=False)
 
         st.success("Tersimpan")
-        st.rerun()
+
 
     if st.button("⬅ Kembali"):
         go("Menu")
@@ -265,16 +185,10 @@ elif st.session_state.page == "Grafik":
 
     st.title("📊 PROFIT PER BULAN")
 
-    if transaksi.empty:
-        st.warning("Belum ada transaksi")
-
-    else:
-
+    if not transaksi.empty:
         transaksi["tanggal"] = pd.to_datetime(transaksi["tanggal"])
         transaksi["bulan"] = transaksi["tanggal"].dt.strftime("%Y-%m")
-
         data = transaksi.groupby("bulan")["profit"].sum()
-
         st.bar_chart(data)
 
     if st.button("⬅ Kembali"):
@@ -290,6 +204,32 @@ elif st.session_state.page == "Riwayat":
     st.title("📜 RIWAYAT TRANSAKSI")
 
     st.dataframe(transaksi, use_container_width=True)
+
+    if st.button("⬅ Kembali"):
+        go("Menu")
+
+
+# =====================
+# FITUR TAMBAHAN
+# =====================
+
+elif st.session_state.page == "Fitur":
+
+    st.title("⚙️ FITUR TAMBAHAN")
+
+    fitur_toko.notifikasi_stok()
+
+    st.divider()
+
+    fitur_toko.kelola_barang()
+
+    st.divider()
+
+    fitur_toko.scan_barcode()
+
+    st.divider()
+
+    fitur_toko.cetak_struk(transaksi)
 
     if st.button("⬅ Kembali"):
         go("Menu")
