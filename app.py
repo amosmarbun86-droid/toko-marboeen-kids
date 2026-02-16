@@ -24,7 +24,6 @@ def set_bg():
 
         st.markdown(f"""
         <style>
-
         .stApp {{
             background-image: url("data:image/png;base64,{encoded}");
             background-size: cover;
@@ -36,24 +35,18 @@ def set_bg():
         footer {{visibility:hidden;}}
 
         .block-container {{
-            padding: 15px;
-        }}
-
-        .card {{
-            background-color: rgba(255,255,255,0.95);
             padding:15px;
-            border-radius:15px;
-            box-shadow:0px 4px 10px rgba(0,0,0,0.2);
         }}
 
-        .title {{
+        .menu-btn {{
             background: linear-gradient(90deg,#ff0000,#ff9900);
-            padding:15px;
-            border-radius:10px;
             color:white;
+            padding:15px;
+            border-radius:12px;
             text-align:center;
-            font-size:28px;
+            font-size:18px;
             font-weight:bold;
+            margin-bottom:10px;
         }}
 
         </style>
@@ -66,20 +59,14 @@ set_bg()
 DATA_BARANG="data_barang.csv"
 DATA_TRANSAKSI="transaksi.csv"
 
-if not os.path.exists("backup"):
-    os.mkdir("backup")
-
-if os.path.exists(DATA_BARANG):
-    shutil.copy(DATA_BARANG,"backup/data_barang_backup.csv")
-
-if os.path.exists(DATA_TRANSAKSI):
-    shutil.copy(DATA_TRANSAKSI,"backup/transaksi_backup.csv")
-
 if not os.path.exists(DATA_BARANG):
     pd.DataFrame(columns=["kode","nama","modal","jual","stok","expired"]).to_csv(DATA_BARANG,index=False)
 
 if not os.path.exists(DATA_TRANSAKSI):
     pd.DataFrame(columns=["tanggal","kode","nama","jumlah","total","profit"]).to_csv(DATA_TRANSAKSI,index=False)
+
+barang=pd.read_csv(DATA_BARANG)
+transaksi=pd.read_csv(DATA_TRANSAKSI)
 
 # ================= LOGIN =================
 
@@ -88,8 +75,7 @@ if "login" not in st.session_state:
 
 if not st.session_state.login:
 
-    st.markdown('<div class="title">🔐 LOGIN ADMIN</div>', unsafe_allow_html=True)
-
+    st.title("🔐 LOGIN ADMIN")
     user=st.text_input("Username")
     pw=st.text_input("Password",type="password")
 
@@ -102,72 +88,52 @@ if not st.session_state.login:
 
     st.stop()
 
-# ================= LOAD =================
+# ================= NAVIGATION =================
 
-barang=pd.read_csv(DATA_BARANG)
-transaksi=pd.read_csv(DATA_TRANSAKSI)
+if "page" not in st.session_state:
+    st.session_state.page="Menu"
 
-# ================= HEADER =================
+def go(page):
+    st.session_state.page=page
 
-st.markdown('<div class="title">🛒 TOKO MARBOEEN KIDS</div>', unsafe_allow_html=True)
+# ================= MENU UTAMA =================
 
-menu=st.sidebar.selectbox("MENU",[
-    "Dashboard",
-    "Tambah Barang",
-    "Kasir",
-    "Barang Expired",
-    "Grafik Profit",
-    "Export Excel"
-])
+if st.session_state.page=="Menu":
 
-# ================= DASHBOARD =================
+    st.markdown("## 🛒 TOKO MARBOEEN KIDS")
 
-if menu=="Dashboard":
+    if st.button("🛒 KASIR",use_container_width=True):
+        go("Kasir")
 
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    if st.button("📦 DATA BARANG",use_container_width=True):
+        go("Barang")
 
-    total_barang=len(barang)
-    total_stok=barang["stok"].sum() if not barang.empty else 0
-    total_profit=transaksi["profit"].sum() if not transaksi.empty else 0
+    if st.button("📊 LAPORAN PROFIT",use_container_width=True):
+        go("Grafik")
 
-    col1,col2,col3=st.columns(3)
-    col1.metric("Jumlah Barang",total_barang)
-    col2.metric("Total Stok",total_stok)
-    col3.metric("Total Profit",total_profit)
+    if st.button("📥 EXPORT EXCEL",use_container_width=True):
+        go("Export")
+
+    if st.button("🚪 LOGOUT",use_container_width=True):
+        st.session_state.login=False
+        st.rerun()
+
+# ================= DATA BARANG =================
+
+elif st.session_state.page=="Barang":
+
+    st.title("📦 DATA BARANG")
 
     st.dataframe(barang,use_container_width=True)
 
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# ================= TAMBAH =================
-
-elif menu=="Tambah Barang":
-
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-
-    kode=st.text_input("Kode")
-    nama=st.text_input("Nama")
-    modal=st.number_input("Modal",0)
-    jual=st.number_input("Jual",0)
-    stok=st.number_input("Stok",0)
-    expired=st.date_input("Expired")
-
-    if st.button("Simpan"):
-        new=pd.DataFrame([{
-            "kode":kode,"nama":nama,"modal":modal,
-            "jual":jual,"stok":stok,"expired":expired
-        }])
-        barang=pd.concat([barang,new],ignore_index=True)
-        barang.to_csv(DATA_BARANG,index=False)
-        st.success("Berhasil")
-
-    st.markdown('</div>', unsafe_allow_html=True)
+    if st.button("⬅ Kembali"):
+        go("Menu")
 
 # ================= KASIR =================
 
-elif menu=="Kasir":
+elif st.session_state.page=="Kasir":
 
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.title("🧾 KASIR")
 
     kode=st.text_input("Scan / Input Kode")
 
@@ -210,20 +176,14 @@ elif menu=="Kasir":
 
                 st.success("Transaksi berhasil")
 
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# ================= EXPIRED =================
-
-elif menu=="Barang Expired":
-
-    if not barang.empty:
-        barang["expired"]=pd.to_datetime(barang["expired"])
-        expired=barang[barang["expired"]<datetime.now()]
-        st.dataframe(expired)
+    if st.button("⬅ Kembali"):
+        go("Menu")
 
 # ================= GRAFIK =================
 
-elif menu=="Grafik Profit":
+elif st.session_state.page=="Grafik":
+
+    st.title("📊 PROFIT PER BULAN")
 
     if not transaksi.empty:
         transaksi["tanggal"]=pd.to_datetime(transaksi["tanggal"])
@@ -231,12 +191,18 @@ elif menu=="Grafik Profit":
         data=transaksi.groupby("bulan")["profit"].sum()
         st.bar_chart(data)
 
+    if st.button("⬅ Kembali"):
+        go("Menu")
+
 # ================= EXPORT =================
 
-elif menu=="Export Excel":
+elif st.session_state.page=="Export":
 
     file="laporan.xlsx"
     transaksi.to_excel(file,index=False)
 
     with open(file,"rb") as f:
         st.download_button("Download Excel",f,file_name=file)
+
+    if st.button("⬅ Kembali"):
+        go("Menu")
