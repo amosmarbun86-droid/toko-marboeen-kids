@@ -119,61 +119,103 @@ if st.session_state.page == "Menu":
 
 
 # =====================
-# KASIR
+# KASIR (VERSI FINAL KERANJANG)
 # =====================
 
 elif st.session_state.page == "Kasir":
 
     st.title("🧾 KASIR")
 
+    if "cart" not in st.session_state:
+        st.session_state.cart = []
+
     if barang.empty:
         st.warning("Belum ada barang")
+
     else:
 
         pilih = st.selectbox("Pilih Barang", barang["nama"])
 
-        data = barang[barang["nama"]==pilih].iloc[0]
+        data = barang[barang["nama"] == pilih].iloc[0]
 
         st.info(f"Harga: {data['jual']} | Stok: {data['stok']}")
 
         jumlah = st.number_input(
             "Jumlah",
             min_value=1,
-            max_value=int(data["stok"]) if data["stok"]>0 else 1,
+            max_value=int(data["stok"]) if data["stok"] > 0 else 1,
             value=1
         )
 
-        if st.button("BAYAR", use_container_width=True):
+        if st.button("Tambah ke Keranjang", use_container_width=True):
 
-            if data["stok"] >= jumlah:
+            st.session_state.cart.append({
+                "kode": data["kode"],
+                "nama": pilih,
+                "modal": data["modal"],
+                "jual": data["jual"],
+                "jumlah": jumlah
+            })
 
-                total = data["jual"] * jumlah
-                profit = (data["jual"] - data["modal"]) * jumlah
+            st.success("Ditambahkan ke keranjang")
 
-                idx = barang.index[barang.nama==pilih][0]
-                barang.loc[idx,"stok"] -= jumlah
-                barang.to_csv(DATA_BARANG,index=False)
+    st.divider()
+    st.subheader("🛒 Keranjang")
+
+    total = 0
+    total_profit = 0
+
+    if st.session_state.cart:
+
+        for i, item in enumerate(st.session_state.cart):
+
+            subtotal = item["jual"] * item["jumlah"]
+            profit = (item["jual"] - item["modal"]) * item["jumlah"]
+
+            total += subtotal
+            total_profit += profit
+
+            col1, col2 = st.columns([4,1])
+
+            col1.write(f"{item['nama']} x {item['jumlah']} = Rp {subtotal}")
+            if col2.button("❌", key=i):
+                st.session_state.cart.pop(i)
+                st.rerun()
+
+        st.write("---")
+        st.markdown(f"### TOTAL : Rp {total}")
+
+        if st.button("BAYAR SEKARANG", use_container_width=True):
+
+            for item in st.session_state.cart:
+
+                idx = barang.index[barang.kode == item["kode"]][0]
+                barang.loc[idx, "stok"] -= item["jumlah"]
 
                 new = pd.DataFrame([{
                     "tanggal": datetime.now(),
-                    "kode": data["kode"],
-                    "nama": pilih,
-                    "jumlah": jumlah,
-                    "total": total,
-                    "profit": profit
+                    "kode": item["kode"],
+                    "nama": item["nama"],
+                    "jumlah": item["jumlah"],
+                    "total": item["jual"] * item["jumlah"],
+                    "profit": (item["jual"] - item["modal"]) * item["jumlah"]
                 }])
-                
-                transaksi = pd.concat([transaksi,new],ignore_index=True)
-                transaksi.to_csv(DATA_TRANSAKSI,index=False)
 
-                st.success(f"Berhasil. Total: Rp {total}")
+                transaksi = pd.concat([transaksi, new], ignore_index=True)
 
-            else:
-                st.error("Stok tidak cukup")
+            barang.to_csv(DATA_BARANG, index=False)
+            transaksi.to_csv(DATA_TRANSAKSI, index=False)
+
+            st.session_state.cart = []
+
+            st.success("Transaksi berhasil ✅")
+            st.rerun()
+
+    else:
+        st.info("Keranjang kosong")
 
     if st.button("⬅ Kembali"):
         go("Menu")
-
 
 # =====================
 # DATA BARANG
