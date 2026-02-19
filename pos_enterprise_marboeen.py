@@ -3,6 +3,54 @@ import pandas as pd
 from datetime import datetime
 import os
 
+# ======================================
+# TEMA PREMIUM BERWARNA
+# ======================================
+
+st.markdown("""
+<style>
+
+/* BACKGROUND UTAMA */
+.stApp {
+    background: linear-gradient(135deg,#0f172a,#1e3a8a,#2563eb);
+    color: white;
+}
+
+/* SIDEBAR */
+[data-testid="stSidebar"] {
+    background: #020617;
+}
+
+/* KARTU PUTIH */
+.block-container {
+    background: rgba(255,255,255,0.95);
+    padding: 2rem;
+    border-radius: 18px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+}
+
+/* JUDUL */
+h1, h2, h3 {
+    color: #0f172a;
+}
+
+/* BUTTON MODERN */
+.stButton > button {
+    background: linear-gradient(135deg,#2563eb,#60a5fa);
+    color: white;
+    border-radius: 12px;
+    border: none;
+    font-weight: bold;
+}
+
+/* INPUT */
+input, textarea {
+    border-radius: 10px !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 # =========================================
 # KONFIGURASI ENTERPRISE
 # =========================================
