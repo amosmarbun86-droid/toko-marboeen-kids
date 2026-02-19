@@ -155,8 +155,9 @@ elif menu == "🏪 Kasir Lama":
 
     st.header("🏪 Mode Kasir Lama")
 
-    import pos_marboeen_allinone as lama
-    lama.main()
+    import runpy
+
+    runpy.run_path("pos_marboeen_allinone.py")
 
 
 # =========================================
