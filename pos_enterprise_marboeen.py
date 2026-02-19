@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime
 import os
 
+
 # ======================================
 # TEMA PREMIUM BERWARNA
 # ======================================
@@ -10,42 +11,63 @@ import os
 st.markdown("""
 <style>
 
-/* BACKGROUND UTAMA */
+/* ===== BACKGROUND PREMIUM ENTERPRISE ===== */
 .stApp {
-    background: linear-gradient(135deg,#0f172a,#1e3a8a,#2563eb);
-    color: white;
+    background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+    background-attachment: fixed;
 }
 
-/* SIDEBAR */
-[data-testid="stSidebar"] {
-    background: #020617;
+/* ===== WARNA TEKS GLOBAL ===== */
+html, body, [class*="css"] {
+    color: #ffffff !important;
 }
 
-/* KARTU PUTIH */
+/* ===== JUDUL ===== */
+h1, h2, h3, h4, h5 {
+    color: #ffffff !important;
+}
+
+/* ===== CONTAINER KARTU ===== */
 .block-container {
-    background: rgba(255,255,255,0.95);
-    padding: 2rem;
+    background: rgba(0,0,0,0.35);
+    padding: 20px;
     border-radius: 18px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    backdrop-filter: blur(14px);
 }
 
-/* JUDUL */
-h1, h2, h3 {
-    color: #0f172a;
+/* ===== LABEL ===== */
+label {
+    color: #ffffff !important;
+    font-weight: 600;
 }
 
-/* BUTTON MODERN */
-.stButton > button {
-    background: linear-gradient(135deg,#2563eb,#60a5fa);
+/* ===== INPUT ===== */
+input, textarea, select {
+    background-color: rgba(255,255,255,0.12) !important;
+    color: #ffffff !important;
+    border-radius: 12px !important;
+    border: none !important;
+}
+
+/* ===== BUTTON ===== */
+.stButton>button {
+    background: linear-gradient(90deg,#00c6ff,#0072ff);
     color: white;
-    border-radius: 12px;
-    border: none;
+    border-radius: 14px;
+    height: 48px;
+    font-size: 18px;
     font-weight: bold;
+    border: none;
 }
 
-/* INPUT */
-input, textarea {
-    border-radius: 10px !important;
+/* ===== SIDEBAR ===== */
+section[data-testid="stSidebar"] {
+    background: rgba(0,0,0,0.5);
+}
+
+/* ===== TABEL ===== */
+table {
+    color: white !important;
 }
 
 </style>
